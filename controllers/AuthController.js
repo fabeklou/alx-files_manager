@@ -7,7 +7,7 @@ class AuthController {
   static async getConnect(req, res) {
     const { authorization } = req.headers;
 
-    if (!authorization) return res.status(400).send({ error: 'Missing authorization header !' });
+    if (!authorization) return res.status(401).send({ error: 'Unauthorized' });
 
     const encodedCredentials = authorization.split(' ')[1];
 
@@ -15,7 +15,7 @@ class AuthController {
       const decodedCredentials = Buffer.from(encodedCredentials, 'base64').toString('utf8');
       const [email, password] = decodedCredentials.split(':');
 
-      if (!email || !password) return res.status(400).send({ error: 'Invalid credentials format !' });
+      if (!email || !password) return res.status(401).send({ error: 'Unauthorized' });
 
       const usersCollection = dbClient._db.collection('users');
       const user = await usersCollection.findOne({ email, password: sha1(password) });
@@ -28,14 +28,14 @@ class AuthController {
       await redisClient.set(`auth_${sessionToken}`, user._id.toString(), 86400);
       return res.status(200).send({ token: sessionToken });
     } catch (error) {
-      return res.status(400).send({ error: 'Invalid credentials format !' });
+      return res.status(401).send({ error: 'Unauthorized' });
     }
   }
 
   static async getDisconnect(req, res) {
     const sessionToken = req.headers['x-token'];
 
-    if (!sessionToken) return res.status(400).send({ error: 'X-Token header is missing !' });
+    if (!sessionToken) return res.status(401).send({ error: 'Unauthorized' });
 
     const userId = await redisClient.get(`auth_${sessionToken}`);
 

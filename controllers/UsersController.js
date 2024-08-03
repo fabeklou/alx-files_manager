@@ -28,7 +28,7 @@ class UsersController {
   static async getMe(req, res) {
     const sessionToken = req.headers['x-token'];
 
-    if (!sessionToken) return res.status(400).send({ error: 'X-Token header is missing !' });
+    if (!sessionToken) return res.status(401).send({ error: 'Unauthorized' });
 
     const userId = await redisClient.get(`auth_${sessionToken}`);
 
