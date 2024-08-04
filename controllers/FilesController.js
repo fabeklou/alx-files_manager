@@ -4,22 +4,33 @@ import { ObjectId } from 'mongodb';
 import redisClient from '../utils/redis';
 import dbClient from '../utils/db';
 
-const folderPath = process.env.FOLDER_PATH || '/tmp/files_manager/';
+const folderPath = process.env.FOLDER_PATH || '/tmp/files_manager';
+
+/** Create folder path when module is loaded */
+(() => {
+  fs.access(folderPath, (error) => {
+    if (error) {
+      fs.mkdir(folderPath, { recursive: true }, (error) => {
+        if (error) console.log('Error While Creating The Folder Path');
+      });
+    }
+  });
+})();
 
 class FilesController {
   static async postUpload(req, res) {
     const sessionToken = req.headers['x-token'];
 
-    if (!sessionToken) return res.status(401).send('Unauthorized');
+    if (!sessionToken) return res.status(401).send({ error: 'Unauthorized' });
 
     const userId = await redisClient.get(`auth_${sessionToken}`);
 
-    if (!userId) return res.status(401).send('Unauthorized');
+    if (!userId) return res.status(401).send({ error: 'Unauthorized' });
 
     const usersCollection = dbClient._db.collection('users');
     const user = await usersCollection.findOne({ _id: ObjectId(userId) });
 
-    if (!user) return res.status(401).send('Unauthorized');
+    if (!user) return res.status(401).send({ error: 'Unauthorized' });
 
     const {
       name, type, data, parentId, isPublic,
@@ -48,7 +59,7 @@ class FilesController {
     const fileData = {
       name,
       type,
-      parentId: fileParentId,
+      parentId: String(fileParentId),
       isPublic: fileIsPublic,
       userId: user._id,
     };
@@ -68,10 +79,8 @@ class FilesController {
     }
 
     const fileNameOnDisk = uuidv4();
-    const localPath = `${folderPath}${fileNameOnDisk}`;
+    const localPath = `${folderPath}/${fileNameOnDisk}`;
 
-    /** Create folder path if not present */
-    await FilesController.createFolderPath(folderPath);
     let decodedData;
 
     if (type === 'file') {
@@ -101,16 +110,6 @@ class FilesController {
       (error) => {
         if (error) console.log(`Error While Creating A New File: ${filePath}`);
       });
-  }
-
-  static async createFolderPath(folderPath) {
-    fs.access(folderPath, (error) => {
-      if (error) {
-        fs.mkdir(folderPath, { recursive: true }, (error) => {
-          if (error) console.log('Error While Creating The Folder Path');
-        });
-      }
-    });
   }
 }
 
