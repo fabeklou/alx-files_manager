@@ -5,7 +5,7 @@
 - [x] User authentication via a token
 - [x] List all files
 - [x] Upload a new file
-- [ ] Change permission of a file
+- [x] Change permission of a file
 - [ ] View a file
 - [ ] Generate thumbnails for images
 
