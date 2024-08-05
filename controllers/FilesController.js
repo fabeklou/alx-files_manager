@@ -18,6 +18,51 @@ const folderPath = process.env.FOLDER_PATH || '/tmp/files_manager';
 })();
 
 class FilesController {
+  static async togglePutPublish(req, res, status) {
+    const { id } = req.params;
+    const sessionToken = req.headers['x-token'];
+
+    if (!sessionToken) return res.status(401).send({ error: 'Unauthorized' });
+
+    const userId = await redisClient.get(`auth_${sessionToken}`);
+
+    if (!userId) return res.status(401).send({ error: 'Unauthorized' });
+
+    const userCollection = dbClient._db.collection('users');
+    const user = await userCollection.findOne({ _id: ObjectId(userId) });
+
+    if (!user) return res.status(401).send({ error: 'Unauthorized' });
+    if (!id) return res.status(404).send({ error: 'Not found' });
+
+    const fileCollection = dbClient._db.collection('files');
+    const file = await fileCollection.findOne({ _id: ObjectId(id), userId: ObjectId(userId) });
+    if (!file) return res.status(404).send({ error: 'Not found' });
+
+    await fileCollection.updateOne(
+      { _id: ObjectId(id), userId: ObjectId(userId) },
+      { $set: { isPublic: status } },
+    );
+
+    const fileUpdatedData = {
+      id: String(file._id),
+      userId: String(file.userId),
+      name: file.name,
+      type: file.type,
+      isPublic: status,
+      parentId: String(file.parentId),
+    };
+
+    return res.status(200).send(fileUpdatedData);
+  }
+
+  static async putPublish(req, res) {
+    return FilesController.togglePutPublish(req, res, true);
+  }
+
+  static async putUnpublish(req, res) {
+    return FilesController.togglePutPublish(req, res, false);
+  }
+
   static async getShow(req, res) {
     const { id } = req.params;
     const sessionToken = req.headers['x-token'];
