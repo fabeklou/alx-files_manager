@@ -2,8 +2,8 @@
 
 ### The objective is to build a simple platform to upload and view files:
 
-- [ x ]  User authentication via a token
-- [ ] List all files
+- [x] User authentication via a token
+- [x] List all files
 - [ ] Upload a new file
 - [ ] Change permission of a file
 - [ ] View a file
