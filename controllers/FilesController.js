@@ -18,6 +18,83 @@ const folderPath = process.env.FOLDER_PATH || '/tmp/files_manager';
 })();
 
 class FilesController {
+  static async getShow(req, res) {
+    const { id } = req.params;
+    const sessionToken = req.headers['x-token'];
+
+    if (!sessionToken) return res.status(401).send({ error: 'Unauthorized' });
+
+    const userId = await redisClient.get(`auth_${sessionToken}`);
+
+    if (!userId) return res.status(401).send({ error: 'Unauthorized' });
+
+    const userCollection = dbClient._db.collection('users');
+    const user = await userCollection.findOne({ _id: ObjectId(userId) });
+
+    if (!user) return res.status(401).send({ error: 'Unauthorized' });
+    if (!id) return res.status(404).send({ error: 'Not found' });
+
+    const fileCollection = dbClient._db.collection('files');
+    const file = await fileCollection.findOne({ _id: ObjectId(id), userId: ObjectId(userId) });
+    if (!file) return res.status(404).send({ error: 'Not found' });
+
+    const fileDocument = {
+      id: String(file._id),
+      userId: String(file.userId),
+      name: file.name,
+      type: file.type,
+      isPublic: file.isPublic,
+      parentId: String(file.parentId),
+    };
+    return res.send(fileDocument);
+  }
+
+  static async getIndex(req, res) {
+    const { parentId, page } = req.query;
+    const sessionToken = req.headers['x-token'];
+
+    if (!sessionToken) return res.status(401).send({ error: 'Unauthorized' });
+
+    const userId = await redisClient.get(`auth_${sessionToken}`);
+
+    if (!userId) return res.status(401).send({ error: 'Unauthorized' });
+
+    const userCollection = dbClient._db.collection('users');
+    const user = await userCollection.findOne({ _id: ObjectId(userId) });
+
+    if (!user) return res.status(401).send({ error: 'Unauthorized' });
+
+    const fileCollection = dbClient._db.collection('files');
+    const researchData = {
+      parentId: parentId ? ObjectId(parentId) : '0',
+      userId: user._id,
+    };
+    const maxPageSize = 20;
+    const fileDocuments = await fileCollection.aggregate([
+      { $match: researchData },
+      { $skip: page ? Number(page) * maxPageSize : 0 },
+      { $limit: maxPageSize },
+    ]).toArray();
+
+    if (!fileDocuments) return res.send([]);
+
+    const listOfFiles = [];
+    for (const file of fileDocuments) {
+      const fileData = {
+        id: String(file._id),
+        userId: String(file.userId),
+        name: file.name,
+        type: file.type,
+        isPublic: file.isPublic,
+        parentId: String(file.parentId),
+      };
+
+      listOfFiles.push(fileData);
+    }
+
+    return res.send(listOfFiles);
+  }
+
   static async postUpload(req, res) {
     const sessionToken = req.headers['x-token'];
 
@@ -54,12 +131,11 @@ class FilesController {
     }
 
     const fileIsPublic = isPublic || false;
-    const fileParentId = parentId || 0;
 
     const fileData = {
       name,
       type,
-      parentId: String(fileParentId),
+      parentId: parentId ? ObjectId(parentId) : '0',
       isPublic: fileIsPublic,
       userId: user._id,
     };
@@ -67,7 +143,7 @@ class FilesController {
     const responseData = {
       name,
       type,
-      parentId: fileParentId,
+      parentId: parentId || 0,
       isPublic: fileIsPublic,
       userId,
     };
