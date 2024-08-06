@@ -7,7 +7,9 @@
 - [x] Upload a new file
 - [x] Change permission of a file
 - [x] View a file
-- [ ] Generate thumbnails for images
+- [x] Generate thumbnails for images
+- [ ] Send a welcome email to new users
+- [ ] Implement E2E testing
 
 ### Resources
 
