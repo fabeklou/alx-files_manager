@@ -2,8 +2,13 @@ import sha1 from 'sha1';
 import { ObjectId } from 'mongodb';
 import dbClient from '../utils/db';
 import redisClient from '../utils/redis';
+import { userQueue } from '../worker';
 
 class UsersController {
+  static async addJob(userId) {
+    await userQueue.add({ userId });
+  }
+
   static async postNew(req, res) {
     const { email, password } = req.body;
 
@@ -22,6 +27,9 @@ class UsersController {
 
     const enryptedPassword = sha1(password);
     const { insertedId } = await usersCollection.insertOne({ email, password: enryptedPassword });
+
+    await UsersController.addJob(insertedId);
+
     return res.status(201).json({ email, id: insertedId });
   }
 
