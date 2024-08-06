@@ -6,7 +6,7 @@
 - [x] List all files
 - [x] Upload a new file
 - [x] Change permission of a file
-- [ ] View a file
+- [x] View a file
 - [ ] Generate thumbnails for images
 
 ### Resources
