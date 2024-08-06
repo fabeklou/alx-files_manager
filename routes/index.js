@@ -18,6 +18,7 @@ const routeMapper = (app) => {
   app.get('/files', FilesController.getIndex);
   app.put('/files/:id/publish', FilesController.putPublish);
   app.put('/files/:id/unpublish', FilesController.putUnpublish);
+  app.get('/files/:id/data', FilesController.getFile);
 };
 
 module.exports = routeMapper;
