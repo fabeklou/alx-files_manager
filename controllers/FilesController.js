@@ -4,6 +4,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { ObjectId } from 'mongodb';
 import redisClient from '../utils/redis';
 import dbClient from '../utils/db';
+import { fileQueue } from '../worker';
 
 const folderPath = process.env.FOLDER_PATH || '/tmp/files_manager';
 
@@ -19,8 +20,13 @@ const folderPath = process.env.FOLDER_PATH || '/tmp/files_manager';
 })();
 
 class FilesController {
+  static async addJob(userId, fileId) {
+    await fileQueue.add({ userId, fileId });
+  }
+
   static async getFile(req, res) {
     const { id } = req.params;
+    const { size } = req.query;
     const sessionToken = req.headers['x-token'];
 
     if (!id) return res.status(404).send({ error: 'Not found' });
@@ -46,12 +52,14 @@ class FilesController {
 
     if (file.type === 'folder') return res.status(400).send({ error: "A folder doesn't have content" });
 
-    return fs.access(file.localPath, (error) => {
+    const thumbnailSuffix = size ? `_${size}` : '';
+    const requestedFilePath = `${file.localPath}${thumbnailSuffix}`;
+    return fs.access(requestedFilePath, (error) => {
       if (error) {
         return res.status(404).send({ error: 'Not found' });
       }
-      const fileMimeType = mime.contentType(file.localPath);
-      return res.sendFile(file.localPath, { headers: { 'Content-Type': fileMimeType } });
+      const fileMimeType = mime.contentType(requestedFilePath);
+      return res.sendFile(requestedFilePath, { headers: { 'Content-Type': fileMimeType } });
     });
   }
 
@@ -255,6 +263,11 @@ class FilesController {
     fileData.localPath = localPath;
     const { insertedId } = await filesCollection.insertOne(fileData);
     responseData.id = insertedId;
+
+    /** Create a fileQueue job for image thumbnails */
+    if (type === 'image') {
+      await FilesController.addJob(userId, insertedId);
+    }
 
     return res.status(201).send(responseData);
   }
