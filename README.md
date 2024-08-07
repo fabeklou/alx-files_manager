@@ -9,7 +9,7 @@
 - [x] View a file
 - [x] Generate thumbnails for images
 - [x] Send a welcome email to new users
-- [ ] Implement E2E testing
+- [x] Implement E2E testing
 
 ### Resources
 
